@@ -2,6 +2,9 @@
 
 #include <unordered_map>
 
+#include <glm/gtc/random.hpp>
+#include <glm/gtx/fast_trigonometry.hpp>
+
 // Explicit specialization of std::hash for Vertex
 template <> struct std::hash<Vertex> {
   size_t operator()(Vertex const &vertex) const noexcept {
@@ -12,13 +15,13 @@ template <> struct std::hash<Vertex> {
 
 void Window::onEvent(SDL_Event const &event) {
   if (event.type == SDL_KEYDOWN) {
-    if (event.key.keysym.sym == SDLK_UP || event.key.keysym.sym == SDLK_w)
+    if (event.key.keysym.sym == SDLK_w)
       m_dollySpeed = 1.0f;
-    if (event.key.keysym.sym == SDLK_DOWN || event.key.keysym.sym == SDLK_s)
+    if (event.key.keysym.sym == SDLK_s)
       m_dollySpeed = -1.0f;
-    if (event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_a)
+    if (event.key.keysym.sym == SDLK_a)
       m_panSpeed = -1.0f;
-    if (event.key.keysym.sym == SDLK_RIGHT || event.key.keysym.sym == SDLK_d)
+    if (event.key.keysym.sym == SDLK_d)
       m_panSpeed = 1.0f;
     if (event.key.keysym.sym == SDLK_q)
       m_truckSpeed = -1.0f;
@@ -26,23 +29,43 @@ void Window::onEvent(SDL_Event const &event) {
       m_truckSpeed = 1.0f;
   }
   if (event.type == SDL_KEYUP) {
-    if ((event.key.keysym.sym == SDLK_UP || event.key.keysym.sym == SDLK_w) &&
+    if ((event.key.keysym.sym == SDLK_w) &&
         m_dollySpeed > 0)
       m_dollySpeed = 0.0f;
-    if ((event.key.keysym.sym == SDLK_DOWN || event.key.keysym.sym == SDLK_s) &&
+    if ((event.key.keysym.sym == SDLK_s) &&
         m_dollySpeed < 0)
       m_dollySpeed = 0.0f;
-    if ((event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_a) &&
+    if ((event.key.keysym.sym == SDLK_a) &&
         m_panSpeed < 0)
       m_panSpeed = 0.0f;
-    if ((event.key.keysym.sym == SDLK_RIGHT ||
-         event.key.keysym.sym == SDLK_d) &&
+    if ((event.key.keysym.sym == SDLK_d) &&
         m_panSpeed > 0)
       m_panSpeed = 0.0f;
     if (event.key.keysym.sym == SDLK_q && m_truckSpeed < 0)
       m_truckSpeed = 0.0f;
     if (event.key.keysym.sym == SDLK_e && m_truckSpeed > 0)
       m_truckSpeed = 0.0f;
+  }
+  
+  if (event.type == SDL_KEYDOWN) {
+    if (event.key.keysym.sym == SDLK_UP) 
+      carSpeed = -1.0f;
+    if (event.key.keysym.sym == SDLK_DOWN)
+      carSpeed = 1.0f;
+    if (event.key.keysym.sym == SDLK_LEFT)
+      rotationDirection = RotationDirection::Left;
+    if (event.key.keysym.sym == SDLK_RIGHT)
+      rotationDirection = RotationDirection::Right;
+  }
+  if (event.type == SDL_KEYUP) {
+    if ((event.key.keysym.sym == SDLK_UP))
+      carSpeed = 0.0f;
+    if ((event.key.keysym.sym == SDLK_DOWN))
+      carSpeed = 0.0f;
+    if ((event.key.keysym.sym == SDLK_LEFT))
+      rotationDirection = RotationDirection::None;
+    if ((event.key.keysym.sym == SDLK_RIGHT))
+      rotationDirection = RotationDirection::None;
   }
 }
 
@@ -69,43 +92,13 @@ void Window::onCreate() {
   m_modelMatrixLocation = abcg::glGetUniformLocation(m_program, "modelMatrix");
   m_colorLocation = abcg::glGetUniformLocation(m_program, "color");
 
-  // Load model
-  loadModelFromFile(assetsPath + "car.obj");
 
-  // Generate VBO
-  abcg::glGenBuffers(1, &m_VBO);
-  abcg::glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-  abcg::glBufferData(GL_ARRAY_BUFFER,
-                     sizeof(m_vertices.at(0)) * m_vertices.size(),
-                     m_vertices.data(), GL_STATIC_DRAW);
-  abcg::glBindBuffer(GL_ARRAY_BUFFER, 0);
+  m_model.loadObj(assetsPath + "car.obj");
+  m_model.setupVAO(m_program);
 
-  // Generate EBO
-  abcg::glGenBuffers(1, &m_EBO);
-  abcg::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
-  abcg::glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-                     sizeof(m_indices.at(0)) * m_indices.size(),
-                     m_indices.data(), GL_STATIC_DRAW);
-  abcg::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-  // Create VAO
-  abcg::glGenVertexArrays(1, &m_VAO);
-
-  // Bind vertex attributes to current VAO
-  abcg::glBindVertexArray(m_VAO);
-
-  abcg::glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
-  auto const positionAttribute{
-      abcg::glGetAttribLocation(m_program, "inPosition")};
-  abcg::glEnableVertexAttribArray(positionAttribute);
-  abcg::glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE,
-                              sizeof(Vertex), nullptr);
-  abcg::glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-  abcg::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
-
-  // End of binding to current VAO
-  abcg::glBindVertexArray(0);
+  player.m_position = glm::vec3(0.0f, 0.2f, 1.0f);
+  driveFront = glm::vec3(0.0f, 0.2f, 0.0f);
+  player.m_rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
 }
 
 void Window::loadModelFromFile(std::string_view path) {
@@ -177,53 +170,23 @@ void Window::onPaint() {
 
   abcg::glBindVertexArray(m_VAO);
 
-  // Draw white bunny
+  // glm::mat4 model{1.0f};
+  // model = glm::translate(model, player.m_position);
+  // model = glm::rotate(model, m_angle, player.m_rotationAxis);
+  // model = glm::translate(model, -player.m_position);
+  // model = glm::scale(model, glm::vec3(0.5f));
+  // driveFront = model * glm::vec4(driveFront, 1.0f);
+
   glm::mat4 model{1.0f};
-  // model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 0.0f));
-  // model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 1, 0));
-  // model = glm::scale(model, glm::vec3(0.5f));
-
-  // abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &model[0][0]);
-  // abcg::glUniform4f(m_colorLocation, 1.0f, 1.0f, 1.0f, 1.0f);
-  // abcg::glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT,
-  //                      nullptr);
-
-  // Draw yellow bunny
-  // model = glm::mat4(1.0);
-  // model = glm::translate(model, glm::vec3(0.0f, 0.0f, -1.0f));
-  // model = glm::scale(model, glm::vec3(0.5f));
-
-  // abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &model[0][0]);
-  // abcg::glUniform4f(m_colorLocation, 1.0f, 0.8f, 0.0f, 1.0f);
-  // abcg::glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT,
-  //                      nullptr);
-
-  // Draw blue bunny
-  // model = glm::mat4(1.0);
-  // model = glm::translate(model, glm::vec3(1.0f, 0.0f, 0.0f));
-  // model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(0, 1, 0));
-  // model = glm::scale(model, glm::vec3(0.5f));
-
-  // abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &model[0][0]);
-  // abcg::glUniform4f(m_colorLocation, 0.0f, 0.8f, 1.0f, 1.0f);
-  // abcg::glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT,
-  //                      nullptr);
-
-  // Draw red bunny
-  model = glm::mat4(1.0);
+  model = glm::translate(model, car.car_pos);
+  model = glm::rotate(model, car.car_angle, player.m_rotationAxis);
   model = glm::scale(model, glm::vec3(0.5f));
-  model = glm::rotate(model, glm::radians(180.0f), glm::vec3(0, 1, 0));
 
   abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &model[0][0]);
-  abcg::glUniform4f(m_colorLocation, 1.0f, 0.25f, 0.25f, 1.0f);
-  abcg::glDrawElements(GL_TRIANGLES, m_indices.size(), GL_UNSIGNED_INT,
-                       nullptr);
-
-  abcg::glBindVertexArray(0);
+  m_model.render();
 
   // Draw ground
   m_ground.paint();
-
   abcg::glUseProgram(0);
 }
 
@@ -246,6 +209,20 @@ void Window::onDestroy() {
 void Window::onUpdate() {
   auto const deltaTime{gsl::narrow_cast<float>(getDeltaTime())};
 
+
+
+  if (rotationDirection == RotationDirection::Left) {
+    car.steer(carSpeed * deltaTime);
+  } else if (rotationDirection == RotationDirection::Right) {
+    car.steer(-carSpeed * deltaTime);
+  }
+
+  car.accelerate(carSpeed * deltaTime);
+
+  // Move eye and center forward (speed > 0) or backward (speed < 0)
+  // driveFront += forward * deltaTime * carSpeed;
+  // player.m_position += forward * deltaTime * carSpeed;
+  
   // Update LookAt camera
   m_camera.dolly(m_dollySpeed * deltaTime);
   m_camera.truck(m_truckSpeed * deltaTime);

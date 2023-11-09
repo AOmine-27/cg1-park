@@ -7,7 +7,7 @@ int main(int argc, char **argv) {
     Window window;
     window.setOpenGLSettings({.samples = 4});
     window.setWindowSettings({
-        .width = 600,
+        .width = 800,
         .height = 600,
         .title = "Park",
     });

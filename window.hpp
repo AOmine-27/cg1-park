@@ -5,12 +5,10 @@
 
 #include "camera.hpp"
 #include "ground.hpp"
+#include "model.hpp"
+#include "car.hpp"
 
-struct Vertex {
-  glm::vec3 position;
-
-  friend bool operator==(Vertex const &, Vertex const &) = default;
-};
+enum class RotationDirection { Right, Left, None };
 
 class Window : public abcg::OpenGLWindow {
 protected:
@@ -40,7 +38,23 @@ private:
   float m_truckSpeed{};
   float m_panSpeed{};
 
+  Model m_model;
   Ground m_ground;
+
+  struct Player {
+    glm::vec3 m_position{};
+    glm::vec3 m_rotationAxis{};
+  };
+
+  Car car;
+
+  Player player;
+  glm::vec3 driveDirection{};
+  glm::vec3 driveFront{};
+  RotationDirection rotationDirection{ RotationDirection::None };
+  float m_angle{};
+  float carSpeed{};
+  float steerSpeed{};
 
   std::vector<Vertex> m_vertices;
   std::vector<GLuint> m_indices;
