@@ -2,6 +2,7 @@
 #define WINDOW_HPP_
 
 #include "abcgOpenGL.hpp"
+#include <random>
 
 #include "camera.hpp"
 #include "ground.hpp"
@@ -21,6 +22,7 @@ protected:
   void onUpdate() override;
 
 private:
+  std::default_random_engine m_randomEngine;
   glm::ivec2 m_viewportSize{};
 
   GLuint m_VAO{};
@@ -46,8 +48,23 @@ private:
     glm::vec3 m_rotationAxis{};
   };
 
-  Car car;
+  struct ParkedCar {
+    glm::vec3 m_position{};
+    float m_angle{};
+    std::array<float, 3> rgb;
+  };
 
+  struct MovingCar {
+    glm::vec3 m_position{};
+    std::array<float, 3> rgb;
+  };
+
+  
+
+  std::array<ParkedCar, 6> parkedCars;
+
+  Car car;
+  MovingCar movingCar;
   Player player;
   glm::vec3 driveDirection{};
   glm::vec3 driveFront{};
@@ -60,6 +77,8 @@ private:
   std::vector<GLuint> m_indices;
 
   void loadModelFromFile(std::string_view path);
+  float generateRandomColor();
+
 };
 
 #endif

@@ -96,9 +96,42 @@ void Window::onCreate() {
   m_model.loadObj(assetsPath + "car.obj");
   m_model.setupVAO(m_program);
 
-  player.m_position = glm::vec3(0.0f, 0.2f, 1.0f);
-  driveFront = glm::vec3(0.0f, 0.2f, 0.0f);
+  player.m_position = glm::vec3(0.2f, 0.2f, 1.0f);
   player.m_rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
+
+  parkedCars[0].m_position = glm::vec3(0.5f, 0.2f, -0.5f);
+  parkedCars[0].m_angle = 180.0f;
+  parkedCars[0].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+
+  parkedCars[1].m_position = glm::vec3(0.5f, 0.2f, 0.5f);
+  parkedCars[1].m_angle = 180.0f;
+  parkedCars[1].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+
+  parkedCars[2].m_position = glm::vec3(-0.5f, 0.2f, 0.0f);
+  parkedCars[2].m_angle = 0.0f;
+  parkedCars[2].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+
+  parkedCars[3].m_position = glm::vec3(-0.5f, 0.2f, 0.5f);
+  parkedCars[3].m_angle = 0.0f;
+  parkedCars[3].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+  
+  parkedCars[4].m_position = glm::vec3(-0.5f, 0.2f, 1.0f);
+  parkedCars[4].m_angle = 0.0f;
+  parkedCars[4].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+
+  parkedCars[5].m_position = glm::vec3(-0.5f, 0.2f, -0.5f);
+  parkedCars[5].m_angle = 0.0f;
+  parkedCars[5].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+  
+  movingCar.m_position = glm::vec3(-0.2f, 0.2f, 1.0f);
+  movingCar.rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+}
+
+float Window::generateRandomColor() {
+  // auto const seed{std::chrono::steady_clock::now().time_since_epoch().count()};
+  // m_randomEngine.seed(seed);
+  std::uniform_real_distribution<float> randomColor(0.0f, 1.0f);
+  return randomColor(m_randomEngine);
 }
 
 void Window::loadModelFromFile(std::string_view path) {
@@ -170,20 +203,41 @@ void Window::onPaint() {
 
   abcg::glBindVertexArray(m_VAO);
 
-  // glm::mat4 model{1.0f};
-  // model = glm::translate(model, player.m_position);
-  // model = glm::rotate(model, m_angle, player.m_rotationAxis);
-  // model = glm::translate(model, -player.m_position);
-  // model = glm::scale(model, glm::vec3(0.5f));
-  // driveFront = model * glm::vec4(driveFront, 1.0f);
 
-  glm::mat4 model{1.0f};
-  model = glm::translate(model, car.car_pos);
-  model = glm::rotate(model, car.car_angle, player.m_rotationAxis);
-  model = glm::scale(model, glm::vec3(0.5f));
+  // Render player car
+  glm::mat4 player_model{1.0f};
+  player_model = glm::translate(player_model, car.car_pos);
+  player_model = glm::rotate(player_model, car.car_angle, player.m_rotationAxis);
+  player_model = glm::scale(player_model, glm::vec3(0.2f));
 
-  abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &model[0][0]);
+  abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &player_model[0][0]);
   m_model.render();
+
+  // Render moving car
+  glm::mat4 moving_car_model{1.0f};
+  moving_car_model = glm::translate(moving_car_model, movingCar.m_position);
+  moving_car_model = glm::rotate(moving_car_model, 0.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+  moving_car_model = glm::scale(moving_car_model, glm::vec3(0.2f));
+
+  abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &moving_car_model[0][0]);
+  abcg::glUniform4f(m_colorLocation, movingCar.rgb[0], movingCar.rgb[1], movingCar.rgb[2], 1.0f);
+  
+  m_model.render();
+
+  //Render parked cars
+  for (auto &parkedCar : parkedCars) {
+    glm::mat4 modelMatrix{1.0f};
+    modelMatrix = glm::translate(modelMatrix, parkedCar.m_position);
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.2f));
+    modelMatrix = glm::rotate(modelMatrix, glm::radians(parkedCar.m_angle), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    // Set uniform variable
+    abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &modelMatrix[0][0]);
+    abcg::glUniform4f(m_colorLocation, parkedCar.rgb[0], parkedCar.rgb[1], parkedCar.rgb[2], 1.0f);
+
+    m_model.render();
+  }
+
 
   // Draw ground
   m_ground.paint();
@@ -216,13 +270,19 @@ void Window::onUpdate() {
   } else if (rotationDirection == RotationDirection::Right) {
     car.steer(-carSpeed * deltaTime);
   }
-
   car.accelerate(carSpeed * deltaTime);
 
-  // Move eye and center forward (speed > 0) or backward (speed < 0)
-  // driveFront += forward * deltaTime * carSpeed;
-  // player.m_position += forward * deltaTime * carSpeed;
-  
+  // Increase z by 10 units per second
+  movingCar.m_position.z += deltaTime * 10.0f;
+
+    // If this star is behind the camera, select a new random position &
+    // orientation and move it back to -100
+  if (movingCar.m_position.z > 2.0f) {
+    movingCar.rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
+    movingCar.m_position.z = -10.0f; // Back to -100
+  }
+
+
   // Update LookAt camera
   m_camera.dolly(m_dollySpeed * deltaTime);
   m_camera.truck(m_truckSpeed * deltaTime);

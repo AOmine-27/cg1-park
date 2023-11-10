@@ -16,8 +16,8 @@ public:
 
 //   glm::mat4 const &getViewMatrix() const { return m_viewMatrix; }
 //   glm::mat4 const &getProjMatrix() const { return m_projMatrix; }
-  glm::vec3 car_at{0.0f, 0.2f, 2.5f};
-  glm::vec3 car_pos{0.0f, 0.2f, 0.0f};
+  glm::vec3 car_at{0.2f, 0.2f, 2.5f};
+  glm::vec3 car_pos{0.2f, 0.2f, 0.0f};
   float car_angle = glm::radians(180.0f);
 
 private:
