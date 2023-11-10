@@ -14,6 +14,7 @@ template <> struct std::hash<Vertex> {
 };
 
 void Window::onEvent(SDL_Event const &event) {
+  // Camera Movements
   if (event.type == SDL_KEYDOWN) {
     if (event.key.keysym.sym == SDLK_w)
       m_dollySpeed = 1.0f;
@@ -47,6 +48,7 @@ void Window::onEvent(SDL_Event const &event) {
       m_truckSpeed = 0.0f;
   }
   
+  // Player's Car Movement
   if (event.type == SDL_KEYDOWN) {
     if (event.key.keysym.sym == SDLK_UP) 
       carSpeed = -1.0f;
@@ -96,9 +98,6 @@ void Window::onCreate() {
   m_model.loadObj(assetsPath + "car.obj");
   m_model.setupVAO(m_program);
 
-  player.m_position = glm::vec3(0.2f, 0.2f, 1.0f);
-  player.m_rotationAxis = glm::vec3(0.0f, 1.0f, 0.0f);
-
   parkedCars[0].m_position = glm::vec3(0.5f, 0.2f, -0.5f);
   parkedCars[0].m_angle = 180.0f;
   parkedCars[0].rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
@@ -128,8 +127,6 @@ void Window::onCreate() {
 }
 
 float Window::generateRandomColor() {
-  // auto const seed{std::chrono::steady_clock::now().time_since_epoch().count()};
-  // m_randomEngine.seed(seed);
   std::uniform_real_distribution<float> randomColor(0.0f, 1.0f);
   return randomColor(m_randomEngine);
 }
@@ -207,7 +204,7 @@ void Window::onPaint() {
   // Render player car
   glm::mat4 player_model{1.0f};
   player_model = glm::translate(player_model, car.car_pos);
-  player_model = glm::rotate(player_model, car.car_angle, player.m_rotationAxis);
+  player_model = glm::rotate(player_model, car.car_angle, glm::vec3(0.0f, 1.0f, 0.0f));
   player_model = glm::scale(player_model, glm::vec3(0.2f));
 
   abcg::glUniformMatrix4fv(m_modelMatrixLocation, 1, GL_FALSE, &player_model[0][0]);
@@ -266,20 +263,30 @@ void Window::onUpdate() {
 
 
   if (rotationDirection == RotationDirection::Left) {
-    car.steer(carSpeed * deltaTime);
+    // If reverse, increase turning speed
+    if (carSpeed > 0.0f) {
+      car.steer(carSpeed * deltaTime * 1.5f);
+    } else {
+      car.steer(carSpeed * deltaTime);
+    }
   } else if (rotationDirection == RotationDirection::Right) {
-    car.steer(-carSpeed * deltaTime);
+    // If reverse, increase turning speed
+    if (carSpeed > 0.0f) {
+      car.steer(-carSpeed * deltaTime * 1.5f);
+    } else {
+      car.steer(-carSpeed * deltaTime);
+    }
   }
+
   car.accelerate(carSpeed * deltaTime);
 
   // Increase z by 10 units per second
   movingCar.m_position.z += deltaTime * 10.0f;
 
-    // If this star is behind the camera, select a new random position &
-    // orientation and move it back to -100
+  // Reset car position and gen new color
   if (movingCar.m_position.z > 2.0f) {
     movingCar.rgb = {generateRandomColor(), generateRandomColor(), generateRandomColor()};
-    movingCar.m_position.z = -10.0f; // Back to -100
+    movingCar.m_position.z = -10.0f;
   }
 
 

@@ -7,7 +7,7 @@
 #include "camera.hpp"
 #include "ground.hpp"
 #include "model.hpp"
-#include "car.hpp"
+#include "playercar.hpp"
 
 enum class RotationDirection { Right, Left, None };
 
@@ -43,35 +43,18 @@ private:
   Model m_model;
   Ground m_ground;
 
-  struct Player {
-    glm::vec3 m_position{};
-    glm::vec3 m_rotationAxis{};
-  };
-
-  struct ParkedCar {
+  struct Car {
     glm::vec3 m_position{};
     float m_angle{};
     std::array<float, 3> rgb;
   };
 
-  struct MovingCar {
-    glm::vec3 m_position{};
-    std::array<float, 3> rgb;
-  };
+  std::array<Car, 6> parkedCars;
 
-  
-
-  std::array<ParkedCar, 6> parkedCars;
-
-  Car car;
-  MovingCar movingCar;
-  Player player;
-  glm::vec3 driveDirection{};
-  glm::vec3 driveFront{};
+  PlayerCar car;
+  Car movingCar;
   RotationDirection rotationDirection{ RotationDirection::None };
-  float m_angle{};
   float carSpeed{};
-  float steerSpeed{};
 
   std::vector<Vertex> m_vertices;
   std::vector<GLuint> m_indices;
